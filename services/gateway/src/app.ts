@@ -1,81 +1,251 @@
-import express, { type Express, type NextFunction, type Request, type Response } from "express";
-import { randomUUID } from "node:crypto";
-import type { HealthResponse } from "@readers/contracts";
-import { AppError } from "@readers/errors";
-import { createLogger } from "@readers/logger";
-
-const service = "gateway" as const;
-const logger = createLogger(service);
+import express, { type Express } from "express";
+import { jwtVerify } from "jose";
 
 export const app: Express = express();
 
-app.disable("x-powered-by");
 app.use(express.json());
 
-app.use((req: Request, res: Response, next: NextFunction) => {
-  const requestId = req.header("x-request-id") ?? randomUUID();
-  res.setHeader("x-request-id", requestId);
+const targets = {
+  identity:
+    process.env.IDENTITY_SERVICE_URL ?? "http://localhost:3001",
+  catalog:
+    process.env.CATALOG_SERVICE_URL ?? "http://localhost:3002",
+  reading:
+    process.env.READING_SERVICE_URL ?? "http://localhost:3003",
+  community:
+    process.env.COMMUNITY_SERVICE_URL ?? "http://localhost:3004",
+};
 
-  const startedAt = Date.now();
+const secret = () =>
+  new TextEncoder().encode(
+    process.env.JWT_SECRET ??
+      "development-only-change-me-please-32chars",
+  );
 
-  res.on("finish", () => {
-    logger.info(
-      {
-        requestId,
-        method: req.method,
-        path: req.path,
-        statusCode: res.statusCode,
-        durationMs: Date.now() - startedAt
-      },
-      "request completed"
-    );
-  });
+async function proxy(
+  req: any,
+  res: any,
+  target: string,
+  path: string,
+  auth = false,
+) {
+  try {
+    const headers: Record<string, string> = {
+      "content-type": "application/json",
+    };
 
-  next();
-});
+    if (auth) {
+      const rawToken = req
+        .header("authorization")
+        ?.replace(/^Bearer /, "");
 
-app.get("/health", (_req: Request, res: Response<HealthResponse>) => {
-  res.json({
-    service,
-    status: "ok",
-    timestamp: new Date().toISOString()
-  });
-});
+      if (!rawToken) {
+        return res.sendStatus(401);
+      }
 
-app.use((_req: Request, _res: Response, next: NextFunction) => {
-  next(new AppError(404, "ROUTE_NOT_FOUND", "Route not found"));
-});
+      const { payload } = await jwtVerify(rawToken, secret());
 
-app.use(
-  (error: unknown, req: Request, res: Response, _next: NextFunction) => {
-    const requestId = res.getHeader("x-request-id");
+      if (!payload.sub) {
+        return res.sendStatus(401);
+      }
 
-    if (error instanceof AppError) {
-      return res.status(error.statusCode).json({
-        error: {
-          code: error.code,
-          message: error.message,
-          requestId
-        }
-      });
+      headers["x-user-id"] = payload.sub;
     }
 
-    logger.error(
-      {
-        err: error,
-        requestId,
-        method: req.method,
-        path: req.path
-      },
-      "unhandled error"
-    );
+    const response = await fetch(target + path, {
+      method: req.method,
+      headers,
+      body: ["GET", "HEAD"].includes(req.method)
+        ? undefined
+        : JSON.stringify(req.body),
+    });
 
-    return res.status(500).json({
+    res.status(response.status);
+
+    const text = await response.text();
+
+    res
+      .type(
+        response.headers.get("content-type") ??
+          "application/json",
+      )
+      .send(text);
+  } catch {
+    res.status(502).json({
       error: {
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Internal server error",
-        requestId
-      }
+        code: "UPSTREAM_UNAVAILABLE",
+        message: "Service unavailable",
+      },
     });
   }
+}
+
+app.get("/health", (_req, res) => {
+  res.json({
+    service: "gateway",
+    status: "ok",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+/*
+ * Authentication
+ * Identity owns authentication.
+ */
+app.use("/api/v1/auth", (req, res) =>
+  proxy(
+    req,
+    res,
+    targets.identity,
+    "/api/v1/auth" + req.url,
+  ),
 );
+
+/*
+ * User social actions
+ * Community owns relationships between users.
+ *
+ * These routes MUST be declared before the generic
+ * /api/v1/users route below.
+ */
+app.post("/api/v1/users/:id/follow", (req, res) =>
+  proxy(
+    req,
+    res,
+    targets.community,
+    `/api/v1/users/${req.params.id}/follow`,
+    true,
+  ),
+);
+
+app.delete("/api/v1/users/:id/follow", (req, res) =>
+  proxy(
+    req,
+    res,
+    targets.community,
+    `/api/v1/users/${req.params.id}/follow`,
+    true,
+  ),
+);
+
+app.post("/api/v1/users/:id/block", (req, res) =>
+  proxy(
+    req,
+    res,
+    targets.community,
+    `/api/v1/users/${req.params.id}/block`,
+    true,
+  ),
+);
+
+/*
+ * Public user profiles
+ * Identity owns the user/profile itself.
+ */
+app.use("/api/v1/users", (req, res) =>
+  proxy(
+    req,
+    res,
+    targets.identity,
+    "/api/v1/users" + req.url,
+  ),
+);
+
+/*
+ * Reading endpoints associated with books.
+ *
+ * Reviews belong to Reading.
+ * Catalog information belongs to Catalog.
+ */
+app.use("/api/v1/books", (req, res) => {
+  const isReviewOperation =
+    req.path.includes("/review");
+
+  const isCommunityOperation =
+    req.path.includes("/events");
+
+  let target = targets.catalog;
+  let auth = false;
+
+  if (isReviewOperation) {
+    target = targets.reading;
+    auth = true;
+  }
+
+  if (isCommunityOperation) {
+    target = targets.community;
+    auth = true;
+  }
+
+  return proxy(
+    req,
+    res,
+    target,
+    "/api/v1/books" + req.url,
+    auth,
+  );
+});
+
+/*
+ * Personal library
+ */
+app.use("/api/v1/me", (req, res) =>
+  proxy(
+    req,
+    res,
+    targets.reading,
+    "/api/v1/me" + req.url,
+    true,
+  ),
+);
+
+/*
+ * Review interactions
+ */
+app.use("/api/v1/reviews", (req, res) =>
+  proxy(
+    req,
+    res,
+    targets.reading,
+    "/api/v1/reviews" + req.url,
+    true,
+  ),
+);
+
+/*
+ * Recommendation boundary.
+ *
+ * Today this points to Reading.
+ * In the future this can be redirected to an independent
+ * recommendation / ML service without changing the public API.
+ */
+app.use("/api/v1/recommendations", (req, res) =>
+  proxy(
+    req,
+    res,
+    targets.reading,
+    "/api/v1/recommendations" + req.url,
+    true,
+  ),
+);
+
+/*
+ * Community domain
+ */
+for (const prefix of [
+  "groups",
+  "events",
+  "challenges",
+  "feed",
+  "reports",
+]) {
+  app.use(`/api/v1/${prefix}`, (req, res) =>
+    proxy(
+      req,
+      res,
+      targets.community,
+      `/api/v1/${prefix}` + req.url,
+      true,
+    ),
+  );
+}

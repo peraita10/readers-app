@@ -1,1 +1,17 @@
-{"name":"@readers/errors","version":"0.1.0","private":true,"type":"module","main":"./dist/index.js","types":"./dist/index.d.ts","exports":{".":{"types":"./dist/index.d.ts","import":"./dist/index.js"}},"scripts":{"build":"tsc","typecheck":"tsc --noEmit"},"devDependencies":{"typescript":"^5.9.2"}}
+{
+  "name": "@readers/errors",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "@types/node": "^24.3.1"
+  }
+}

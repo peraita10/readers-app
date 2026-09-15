@@ -1,1 +1,3 @@
-import "dotenv/config"; import { z } from "zod"; const nodeEnv=z.enum(["development","test","production"]); export function loadServiceConfig(portVariable:string,defaultPort:number){const schema=z.object({NODE_ENV:nodeEnv.default("development"),[portVariable]:z.coerce.number().int().positive().max(65535).default(defaultPort)});const p=schema.parse(process.env);return {nodeEnv:p.NODE_ENV,port:p[portVariable] as number};}
+import "dotenv/config"; import {z} from "zod";
+export function serviceConfig(portName:string, fallback:number){return z.object({NODE_ENV:z.enum(["development","test","production"]).default("development"),[portName]:z.coerce.number().default(fallback)}).parse(process.env)}
+export function requiredEnv(name:string){const v=process.env[name];if(!v)throw new Error(`${name} is required`);return v}

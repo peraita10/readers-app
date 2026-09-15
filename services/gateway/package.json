@@ -1,6 +1,6 @@
 {
   "name": "@readers/gateway",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,11 +14,14 @@
     "@readers/contracts": "workspace:*",
     "@readers/errors": "workspace:*",
     "@readers/logger": "workspace:*",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "zod": "^4.1.8",
+    "jose": "^6.1.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
     "@types/node": "^24.3.1",
+    "@types/pg": "^8.15.5",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"
   }

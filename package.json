@@ -1,14 +1,17 @@
 {
   "name": "readers-app",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
-    "dev": "pnpm -r --parallel --filter ./services/** run dev",
+    "dev": "dotenv -e .env -- pnpm -r --parallel --filter ./services/** --filter ./apps/** run dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck"
   },
   "engines": {
     "node": ">=22"
   },
-  "packageManager": "pnpm@10.17.1"
+  "packageManager": "pnpm@10.17.1",
+  "devDependencies": {
+    "dotenv-cli": "^11.0.0"
+  }
 }

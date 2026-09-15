@@ -1,0 +1,1 @@
+CREATE TABLE books(external_id TEXT PRIMARY KEY,payload JSONB NOT NULL,updated_at TIMESTAMPTZ DEFAULT NOW());

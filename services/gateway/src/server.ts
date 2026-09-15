@@ -1,1 +1,4 @@
-import{app}from"./app.js";import{config}from"./config/index.js";import{createLogger}from"@readers/logger";const logger=createLogger("gateway");const server=app.listen(config.port,()=>logger.info({port:config.port,environment:config.nodeEnv},"service started"));function shutdown(signal:string){logger.info({signal},"shutting down");server.close(error=>{if(error){logger.error({err:error},"shutdown failed");process.exit(1);}process.exit(0);});}process.on("SIGTERM",()=>shutdown("SIGTERM"));process.on("SIGINT",()=>shutdown("SIGINT"));
+import{app}from"./app.js";import{logger}from"@readers/logger";
+const port=Number(process.env.GATEWAY_PORT??3000);const log=logger("gateway");
+const server=app.listen(port,()=>log.info({port},"service started"));
+for(const signal of ["SIGINT","SIGTERM"] as const)process.on(signal,()=>server.close(()=>process.exit(0)));

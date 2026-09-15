@@ -1,0 +1,11 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE TABLE follows(follower_id UUID,followed_id UUID,created_at TIMESTAMPTZ DEFAULT NOW(),PRIMARY KEY(follower_id,followed_id));
+CREATE TABLE groups(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),owner_id UUID NOT NULL,name VARCHAR(100) NOT NULL,description TEXT,province VARCHAR(32),is_private BOOLEAN DEFAULT FALSE,created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE group_members(group_id UUID REFERENCES groups(id) ON DELETE CASCADE,user_id UUID,role TEXT DEFAULT 'MEMBER',PRIMARY KEY(group_id,user_id));
+CREATE TABLE posts(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),author_id UUID NOT NULL,group_id UUID REFERENCES groups(id) ON DELETE CASCADE,text TEXT NOT NULL,book_id TEXT,created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE events(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),group_id UUID REFERENCES groups(id),creator_id UUID NOT NULL,title TEXT NOT NULL,book_id TEXT NOT NULL,starts_at TIMESTAMPTZ NOT NULL,province VARCHAR(32) NOT NULL,location TEXT NOT NULL,capacity INT,meeting_url TEXT,created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE event_attendees(event_id UUID REFERENCES events(id) ON DELETE CASCADE,user_id UUID,PRIMARY KEY(event_id,user_id));
+CREATE TABLE challenges(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),creator_id UUID NOT NULL,group_id UUID REFERENCES groups(id),name TEXT NOT NULL,target_books INT NOT NULL,starts_at DATE NOT NULL,ends_at DATE NOT NULL);
+CREATE TABLE blocks(blocker_id UUID,blocked_id UUID,PRIMARY KEY(blocker_id,blocked_id));
+CREATE TABLE reports(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),reporter_id UUID NOT NULL,target_type TEXT NOT NULL,target_id TEXT NOT NULL,reason TEXT NOT NULL,status TEXT DEFAULT 'OPEN',created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE notifications(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),user_id UUID NOT NULL,type TEXT NOT NULL,payload JSONB NOT NULL DEFAULT '{}',read_at TIMESTAMPTZ,created_at TIMESTAMPTZ DEFAULT NOW());
