@@ -167,6 +167,10 @@ app.post("/api/v1/users/:id/block", (req, res) =>
  * Public user profiles
  * Identity owns the user/profile itself.
  */
+app.post("/api/v1/users/batch", (req, res) =>
+  proxy(req,res,targets.identity,"/api/v1/users/batch"),
+);
+
 app.use("/api/v1/users", (req, res) =>
   proxy(
     req,
