@@ -146,6 +146,13 @@ app.delete("/api/v1/users/:id/follow", (req, res) =>
   ),
 );
 
+app.get("/api/v1/users/:id/social", (req, res) =>
+  proxy(req,res,targets.community,`/api/v1/users/${req.params.id}/social`,true),
+);
+app.get("/api/v1/users/:id/posts", (req, res) =>
+  proxy(req,res,targets.community,`/api/v1/users/${req.params.id}/posts`,true),
+);
+
 app.post("/api/v1/users/:id/block", (req, res) =>
   proxy(
     req,
@@ -251,6 +258,7 @@ app.use("/api/v1/recommendations", (req, res) =>
  * Community domain
  */
 for (const prefix of [
+  "posts",
   "groups",
   "events",
   "challenges",
