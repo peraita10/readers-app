@@ -3,6 +3,8 @@ CREATE TABLE follows(follower_id UUID,followed_id UUID,created_at TIMESTAMPTZ DE
 CREATE TABLE groups(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),owner_id UUID NOT NULL,name VARCHAR(100) NOT NULL,description TEXT,province VARCHAR(32),is_private BOOLEAN DEFAULT FALSE,created_at TIMESTAMPTZ DEFAULT NOW());
 CREATE TABLE group_members(group_id UUID REFERENCES groups(id) ON DELETE CASCADE,user_id UUID,role TEXT DEFAULT 'MEMBER',PRIMARY KEY(group_id,user_id));
 CREATE TABLE posts(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),author_id UUID NOT NULL,group_id UUID REFERENCES groups(id) ON DELETE CASCADE,text TEXT NOT NULL,book_id TEXT,created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE post_likes(post_id UUID REFERENCES posts(id) ON DELETE CASCADE,user_id UUID NOT NULL,created_at TIMESTAMPTZ DEFAULT NOW(),PRIMARY KEY(post_id,user_id));
+CREATE TABLE post_comments(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),post_id UUID REFERENCES posts(id) ON DELETE CASCADE,author_id UUID NOT NULL,text TEXT NOT NULL,created_at TIMESTAMPTZ DEFAULT NOW());
 CREATE TABLE events(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),group_id UUID REFERENCES groups(id),creator_id UUID NOT NULL,title TEXT NOT NULL,book_id TEXT NOT NULL,starts_at TIMESTAMPTZ NOT NULL,province VARCHAR(32) NOT NULL,location TEXT NOT NULL,capacity INT,meeting_url TEXT,created_at TIMESTAMPTZ DEFAULT NOW());
 CREATE TABLE event_attendees(event_id UUID REFERENCES events(id) ON DELETE CASCADE,user_id UUID,PRIMARY KEY(event_id,user_id));
 CREATE TABLE challenges(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),creator_id UUID NOT NULL,group_id UUID REFERENCES groups(id),name TEXT NOT NULL,target_books INT NOT NULL,starts_at DATE NOT NULL,ends_at DATE NOT NULL);
