@@ -7,7 +7,8 @@ const API = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api/v1";
 type User={id:string;username:string;displayName:string;province?:string|null};
 type Book={externalId:string;title:string;authors?:string[];firstPublishYear?:number|null;coverUrl?:string|null;description?:string|null;subjects?:string[]};
 type Session={user:User;accessToken:string};
-type View="home"|"explore"|"library"|"groups"|"clubs"|"challenges";\ntype LibraryItem={book_id:string;status:string;book?:Book};
+type View="home"|"explore"|"library"|"groups"|"clubs"|"challenges";
+type LibraryItem={book_id:string;status:string;book?:Book};
 
 async function request<T>(path:string, options:RequestInit={}, token?:string):Promise<T>{
   const headers=new Headers(options.headers); if(options.body) headers.set("Content-Type","application/json"); if(token) headers.set("Authorization",`Bearer ${token}`);
